@@ -35,6 +35,24 @@ The Document Service is a RESTful API that allows users to upload, store, and pa
 
 ### Installation
 
+#### DB SETUP
+1. Open a new terminal window.
+2. Run the `init_db_script` script to initialize the database.
+3. To verify if the database was successfully created, start PostgreSQL by running the following command:
+   
+   ```bash
+   psql
+4. List all available databases and check if the daiky_document_service database exists with the command:
+   ```bash
+     \l
+5. To connect to the daiky_document_service database, run:
+    ```bash
+   CREATE DATABASE daiky_document_service;
+
+6. Once connected, check if the documents table exists by running:
+    ```bash
+   \dt
+
 ### Start
 uvicorn app.main:app --reload
 ### Testing
