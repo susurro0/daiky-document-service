@@ -55,4 +55,3 @@ jobs:
     - name: Test with pytest
       run: |
         pytest --cov=app --cov-report=term-missing
-fix failing tests, fix import errors · susurro0/daiky-document-service@d922fca
