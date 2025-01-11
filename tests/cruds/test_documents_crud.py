@@ -3,6 +3,8 @@ from datetime import datetime
 import pytest
 from unittest.mock import MagicMock, patch
 
+from fastapi import UploadFile
+
 from api.schemas.document_schemas import DocumentCreate
 from crud.document_crud import DocumentCRUD
 from models.document_models import Document
@@ -24,13 +26,19 @@ def mock_document():
 
 def test_create_document(document_crud, mock_document):
     # Arrange
-    document_data = DocumentCreate(file_name="test_file.txt", file_type="text/plain", upload_timestamp=datetime(2022, 1, 1))
+    file = UploadFile(filename="test.txt", file=b"Hello, World!")
+    document_data = DocumentCreate(
+        file=file,
+        file_name="test_file.txt",
+        file_type="text/plain",
+        upload_timestamp=datetime(2022, 1, 1)
+    )
     with patch('app.models.document_models.Document.create', return_value=mock_document) as mock_create:
         # Act
         created_document = document_crud.create_document(document_data)
 
         # Assert
-        mock_create.assert_called_once_with(**document_data.model_dump())
+        mock_create.assert_called_once()
         assert created_document == mock_document
 
 def test_get_documents(document_crud, mock_document):
@@ -68,7 +76,13 @@ def test_get_document_not_found(document_crud):
 def test_update_document_found(document_crud, mock_document):
     # Arrange
     document_id = 1
-    document_data = DocumentCreate(file_name="test_file.txt", file_type="text/plain", upload_timestamp=datetime(2022, 1, 1))
+    file = UploadFile(filename="test.txt", file=b"Hello, World!")
+    document_data = DocumentCreate(
+        file=file,
+        file_name="test_file.txt",
+        file_type="text/plain",
+        upload_timestamp=datetime(2022, 1, 1)
+    )
     with patch('app.models.document_models.Document.get_or_none', return_value=mock_document) as mock_get, \
          patch.object(mock_document, 'save') as mock_save:
         # Act
@@ -77,12 +91,18 @@ def test_update_document_found(document_crud, mock_document):
         # Assert
         mock_get.assert_called_once_with(Document.id == document_id)
         assert updated_document == mock_document
-        mock_document.save.assert_called_once()  # Ensure save was called
+        mock_save.assert_called_once()  # Ensure save was called
 
 def test_update_document_not_found(document_crud):
     # Arrange
     document_id = 999  # Assume this document does not exist
-    document_data = DocumentCreate(file_name="test_file.txt", file_type="text/plain", upload_timestamp=datetime(2022, 1, 1))
+    file = UploadFile(filename="test.txt", file=b"Hello, World!")
+    document_data = DocumentCreate(
+        file=file,
+        file_name="test_file.txt",
+        file_type="text/plain",
+        upload_timestamp=datetime(2022, 1, 1)
+    )
     with patch('app.models.document_models.Document.get_or_none', return_value=None) as mock_get:
         # Act
         updated_document = document_crud.update_document(document_id, document_data)

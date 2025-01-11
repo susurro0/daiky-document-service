@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
+from fastapi import File, UploadFile
 from pydantic import BaseModel, ConfigDict
 
 
@@ -13,7 +14,9 @@ class DocumentBase(BaseModel):
     model_config = ConfigDict()
 
 class DocumentCreate(DocumentBase):
-    pass
+    file: UploadFile
+    file_name: Optional[str]
+    file_type: Optional[str]
 
 class DocumentUpdate(DocumentBase):
     file_name: Optional[str] = None

@@ -8,7 +8,12 @@ class DocumentCRUD:
         self.db = db  # The db is now an instance of SqliteDatabase
 
     def create_document(self, document: DocumentCreate) -> Document:
-        db_document = Document.create(**document.model_dump())
+        db_document = Document.create(
+            file_name=document.file_name,
+            file_type=document.file_type,
+            upload_timestamp=document.upload_timestamp,
+            parsed_text=document.parsed_text
+        )
         return db_document
 
     def get_documents(self) -> List[Document]:
