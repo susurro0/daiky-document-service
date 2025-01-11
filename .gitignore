@@ -1,0 +1,6 @@
+.env
+htmlcov
+venv
+.idea
+
+*.pem
