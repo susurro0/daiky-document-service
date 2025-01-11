@@ -1,6 +1,3 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-
 name: Python application
 
 on:
@@ -13,6 +10,22 @@ permissions:
   contents: read
 
 jobs:
+  services:
+        postgres:
+          image: postgres
+  
+          env:
+            USER_PASSWORD: postgres
+            USER_NAME: postgres
+            DATABASE_PUBLIC_URL: postgres
+  
+          options: >-
+            --health-cmd pg_isready
+            --health-interval 10s
+            --health-timeout 5s
+            --health-retries 5
+          ports:
+            - 5432:5432
   build:
 
     runs-on: ubuntu-latest
@@ -26,7 +39,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 pytest
+        pip install flake8 pytest psycopg2-binary python-dotenv
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Lint with flake8
       run: |
@@ -34,7 +47,12 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: migrate database
+      run: |
+        python init_db_script.py
+      env:
+        DBURL: "postgres://postgres:postgres@localhost:5432/postgres"
     - name: Test with pytest
       run: |
         pytest --cov=app --cov-report=term-missing
-
+fix failing tests, fix import errors · susurro0/daiky-document-service@d922fca
