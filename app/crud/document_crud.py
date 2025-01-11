@@ -1,6 +1,6 @@
 from typing import Optional, List
-from api.schemas.document_schemas import DocumentCreate
-from models.document_models import Document
+from app.api.schemas.document_schemas import DocumentCreate
+from app.models.document_models import Document
 
 
 class DocumentCRUD:

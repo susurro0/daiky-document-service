@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.endpoints import DocumentRoutes
+from .api.endpoints import DocumentRoutes
 from .core.initializer import AppInitializer
 from .db.database import database_instance
 from .dependencies import Dependency
