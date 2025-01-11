@@ -4,3 +4,6 @@ venv
 .idea
 
 *.pem
+.coverage
+.DS_Store
+
