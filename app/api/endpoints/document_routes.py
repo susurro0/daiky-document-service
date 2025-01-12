@@ -4,9 +4,11 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from starlette.responses import JSONResponse
 
+from api.schemas.parsed_document_schema import ParsedDocument
 from app.api.schemas.document_schemas import DocumentCreate, Document
 from app.crud.document_crud import DocumentCRUD
 from app.dependencies import Dependency
+from PyPDF2 import PdfReader
 
 
 class DocumentRoutes:
@@ -33,14 +35,18 @@ class DocumentRoutes:
                 file_type = file.content_type
                 upload_timestamp = datetime.now()
 
-                if not os.path.exists("/Users/denizcingoez/Documents/workspace/daiky/daiky-document-service/uploads"):
-                    os.makedirs('/Users/denizcingoez/Documents/workspace/daiky/daiky-document-service/uploads')
-
                 # Define the location where the file will be saved
-                file_location = f"/Users/denizcingoez/Documents/workspace/daiky/daiky-document-service/uploads/{file_name}"
+                file_location = f"uploads/{file_name}"
 
                 # Ensure the directory exists
-                os.makedirs(os.path.dirname(file_location), exist_ok=True)
+                if not os.path.exists(os.path.dirname(file_location)):
+                    os.makedirs(os.path.dirname(file_location), exist_ok=True)
+                os.chmod(os.path.dirname(file_location), 0o777)
+
+                # Check if the file exists and handle overwrite logic
+                if os.path.exists(file_location):
+                    # Log the overwrite action if needed
+                    print(f"File {file_name} already exists. Overwriting...")
 
                 # Save the file to the specified location
                 with open(file_location, "wb") as f:
@@ -75,7 +81,51 @@ class DocumentRoutes:
                     status_code=500, detail="An error occurred while uploading the file."
                 )
 
+        @self.router.post("/api/documents/{document_id}/parse", response_model=ParsedDocument)
+        def parse_document(document_id: int):
+            try:
+                # Retrieve the document from the database
+                document = self.document_crud.get_document(document_id)
+                if document is None:
+                    raise HTTPException(status_code=404, detail="Document not found")
 
-        @self.router.get("/api/document/", response_model=list[Document])
-        def read_document():
-            pass
+                # Parse the document
+                file_location = f"uploads/{document.file_name}"
+                if document.file_type == "application/pdf":
+                    with open(file_location, "rb") as f:
+                        pdf_reader = PdfReader(f)
+                        text = ""
+                        for page in pdf_reader.pages:
+                            text += page.extract_text()
+                        return ParsedDocument(text=text)
+                elif document.file_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                    from docx import Document as DocxDocument
+                    docx = DocxDocument(file_location)
+                    text = ""
+                    for para in docx.paragraphs:
+                        text += para.text
+                    return ParsedDocument(text=text)
+                elif document.file_type == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+                    from pptx import Presentation
+                    pptx = Presentation(file_location)
+                    text = ""
+                    for slide in pptx.slides:
+                        for shape in slide.shapes:
+                            if hasattr(shape, "text"):
+                                text += shape.text
+                    return ParsedDocument(text=text)
+                else:
+                    raise HTTPException(status_code=415, detail="Unsupported file format")
+
+            except Exception as e:
+                if isinstance(e, HTTPException):
+                    # If it is, re-raise the same HTTPException
+                    raise e
+                else:
+                    # Otherwise, raise a new HTTPException with a generic message
+                    print(f"Failed to parse document: {e}")  # Replace with proper logging in production
+                    raise HTTPException(
+                        status_code=500,
+                        detail="An error occurred while parsing the document."
+                    )
+
