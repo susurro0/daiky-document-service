@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from starlette.responses import JSONResponse
 
-from api.schemas.parsed_document_schema import ParsedDocument
+from app.api.schemas.parsed_document_schema import ParsedDocument
 from app.api.schemas.document_schemas import DocumentCreate, Document
 from app.crud.document_crud import DocumentCRUD
 from app.dependencies import Dependency
