@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Parameters
-DB_NAME = "daiky_document_service"
+DB_NAME = "daiky"
 DB_USER = os.getenv("USER_NAME")
 DB_PASSWORD = os.getenv("USER_PASSWORD")
 DB_HOST = "localhost"
