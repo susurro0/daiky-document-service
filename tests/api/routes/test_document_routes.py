@@ -117,7 +117,6 @@ def test_create_document(client_success):
     response = client_success.post("/api/upload/", files=file_data)
 
     # Assert the response status code is 200
-    print(response.json())
     assert response.status_code == 200
 
     # Get the response JSON content
