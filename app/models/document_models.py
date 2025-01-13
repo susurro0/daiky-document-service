@@ -8,7 +8,7 @@ from app.db.database import database_instance
 class Document(Model):
     id = IntegerField(primary_key=True)
     file_name = CharField(max_length=100)
-    file_type = CharField(max_length=10)
+    file_type = CharField(max_length=50)
     upload_timestamp = DateTimeField(default=datetime.now)
     parsed_text = TextField(null=True)
 

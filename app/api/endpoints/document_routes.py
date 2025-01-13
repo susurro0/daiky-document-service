@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-
+from transformers import pipeline
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from starlette.responses import JSONResponse
 
@@ -16,7 +16,7 @@ class DocumentRoutes:
         self.router = APIRouter()
         self.db = dependency.get_db()
         self.document_crud = document_crud
-
+        self.summarizer = pipeline("summarization")
         #TODO
         @self.router.post("/api/upload/", response_model=Document)
         def upload_file(file: UploadFile = File(...)):
@@ -34,7 +34,6 @@ class DocumentRoutes:
                 file_name = file.filename
                 file_type = file.content_type
                 upload_timestamp = datetime.now()
-
                 # Define the location where the file will be saved
                 file_location = f"uploads/{file_name}"
 
@@ -52,13 +51,15 @@ class DocumentRoutes:
                 with open(file_location, "wb") as f:
                     f.write(file.file.read())
 
-                # Create the document object for saving to the database
+                # Parse the document if it's a PDF  'Create the document object for saving to the database
                 document_create = DocumentCreate(
                     file=file,
                     file_name=file_name,
                     file_type=file_type,
                     upload_timestamp=upload_timestamp,
                 )
+                print(document_create.upload_timestamp)
+
                 # Assuming we have an instance of DocumentCRUD
                 document_crud = DocumentCRUD(db=self.db)  # Use the proper db connection here
                 saved_document = document_crud.create_document(document_create)
@@ -85,27 +86,26 @@ class DocumentRoutes:
         def parse_document(document_id: int):
             try:
                 # Retrieve the document from the database
-                document = self.document_crud.get_document(document_id)
+                document = self.document_crud.get_document(self, document_id=document_id)
                 if document is None:
                     raise HTTPException(status_code=404, detail="Document not found")
 
                 # Parse the document
                 file_location = f"uploads/{document.file_name}"
-                if document.file_type == "application/pdf":
+                text = ""
+                if document.file_type == "PDF":
                     with open(file_location, "rb") as f:
                         pdf_reader = PdfReader(f)
                         text = ""
                         for page in pdf_reader.pages:
                             text += page.extract_text()
-                        return ParsedDocument(text=text)
-                elif document.file_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                elif document.file_type == "DOCX":
                     from docx import Document as DocxDocument
                     docx = DocxDocument(file_location)
                     text = ""
                     for para in docx.paragraphs:
                         text += para.text
-                    return ParsedDocument(text=text)
-                elif document.file_type == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+                elif document.file_type == "PPTX":
                     from pptx import Presentation
                     pptx = Presentation(file_location)
                     text = ""
@@ -113,10 +113,12 @@ class DocumentRoutes:
                         for shape in slide.shapes:
                             if hasattr(shape, "text"):
                                 text += shape.text
-                    return ParsedDocument(text=text)
                 else:
                     raise HTTPException(status_code=415, detail="Unsupported file format")
-
+                print(type(text))
+                summary = self.summarizer(text, max_length=150, min_length=25, do_sample=False)
+                print(summary)
+                return ParsedDocument(text=text, summary=summary[0]['summary_text'])
             except Exception as e:
                 if isinstance(e, HTTPException):
                     # If it is, re-raise the same HTTPException

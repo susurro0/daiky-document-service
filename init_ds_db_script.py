@@ -70,7 +70,7 @@ def initialize_schema():
         CREATE TABLE documents (
             id SERIAL PRIMARY KEY,
             file_name VARCHAR(100) NOT NULL,
-            file_type VARCHAR(10) NOT NULL,
+            file_type VARCHAR(100) NOT NULL,
             upload_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             parsed_text TEXT
         );

@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.endpoints import DocumentRoutes
-from .core.initializer import AppInitializer
-from .db.database import database_instance
-from .dependencies import Dependency
+from app.api.endpoints import DocumentRoutes
+from app.core.initializer import AppInitializer
+from app.db.database import database_instance
+from app.dependencies import Dependency
 
 
 def create_app() -> FastAPI:
@@ -12,7 +12,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000"],  # Adjust to your frontend URL
+        allow_origins=["http://localhost:5174"],  # Adjust to your frontend URL
         allow_credentials=True,
         allow_methods=["*"],  # Allow all HTTP methods
         allow_headers=["*"],  # Allow all headers
