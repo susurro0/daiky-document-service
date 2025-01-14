@@ -1,9 +1,11 @@
+from typing import List
+
 from pydantic import BaseModel, ConfigDict
 
 
 class ParsedDocument(BaseModel):
-    text: str
     summary: str
+    chunks: List[str]
     model_config = ConfigDict()
 
 
