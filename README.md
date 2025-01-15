@@ -34,10 +34,21 @@ The Document Service is a RESTful API that allows users to upload, store, and pa
 - PostgreSQL
 
 ### Installation
+1. Create Virtual environment ```python -m venv venv```
+2. Install requirements ``` pip install -r requirements.txt```
+3. Update .env with your data
+``` 
+    USER_NAME="**username**"
+    USER_PASSWORD="**pw**"
+    DB_NAME="**db_name**"    
+    DB_HOST="**port**"
 
+    DATABASE_PUBLIC_URL="postgresql://${USER_NAME}:${USER_PASSWORD}@${DB_HOST}/${DB_NAME}"
+```
+ 
 #### DB SETUP
 1. Open a new terminal window.
-2. Run the `init_db_script` script to initialize the database.
+2. Run the `init_ds_db_script` script to initialize the database.
 3. To verify if the database was successfully created, start PostgreSQL by running the following command:
    
    ```bash
@@ -54,7 +65,9 @@ The Document Service is a RESTful API that allows users to upload, store, and pa
    \dt
 
 ### Start
+```bash
 uvicorn app.main:app --reload
+```
 ### Testing
 pytest --cov=app tests/
 
