@@ -2,6 +2,7 @@
 from api.schemas.parsed_document_schema import ParsedDocument
 
 def test_parsed_document_model_valid():
-    document = ParsedDocument(text="This is a test document")
+    document = ParsedDocument(summary="This is a test summary", chunks= ['chunk'])
 
-    assert document.text == "This is a test document"
+    assert document.summary == "This is a test summary"
+    assert document.chunks == ['chunk']

@@ -12,7 +12,7 @@ The Document Service is a RESTful API that allows users to upload, store, and pa
 ## API Endpoints
 
 ### 1. Upload Document
-- **Endpoint**: `POST /documents`
+- **Endpoint**: `POST /api/documents`
 - **Request Body**: 
   - `document` (file upload)
 - **Response**:
@@ -22,7 +22,7 @@ The Document Service is a RESTful API that allows users to upload, store, and pa
   }
   
 ### 2. Parse Document
-- **Endpoint**: POST /documents/{id}/parse
+- **Endpoint**: `GET /documents/{id}/parse`
 - **Request Body**: None
 - **Response**:
   ```json

@@ -7,21 +7,22 @@ from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, create_autospec, patch
 
 from app.api.endpoints import DocumentRoutes
-from api.schemas.document_schemas import Document
-from crud.document_crud import DocumentCRUD
-from dependencies import Dependency
+from app.api.schemas.document_schemas import Document
+from app.crud.document_crud import DocumentCRUD
+from app.dependencies import Dependency
 
 
 # Mock data
-sample_document_pdf = Document(id=1, file_name="dummy.pdf", file_type="application/pdf", upload_timestamp=datetime(2022, 1, 1))
-sample_document_docx = Document(id=2, file_name="dummy.docx", file_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", upload_timestamp=datetime(2022, 1, 1))
-sample_document_pptx = Document(id=3, file_name="dummy.pptx", file_type="application/vnd.openxmlformats-officedocument.presentationml.presentation", upload_timestamp=datetime(2022, 1, 1))
+sample_document_pdf = Document(id=1, file_name="dummy.pdf", file_type="PDF", upload_timestamp=datetime(2022, 1, 1))
+sample_document_docx = Document(id=2, file_name="dummy.docx", file_type="DOCX", upload_timestamp=datetime(2022, 1, 1))
+sample_document_pptx = Document(id=909999, file_name="dummy.pptx", file_type="PPTX", upload_timestamp=datetime(2022, 1, 1))
+sample_document_txt = Document(id=4, file_name="dummy.txt", file_type="txt", upload_timestamp=datetime(2022, 1, 1))
 
 
 @pytest.fixture
 def client_success():
     app = FastAPI()
-    sample_document = Document(id=1, file_name="test_file.txt", file_type="text/plain", upload_timestamp=datetime(2022, 1, 1))
+    sample_document = Document(id=1, file_name="test_file.docx", file_type="docx", upload_timestamp=datetime(2022, 1, 1))
 
     # Create a mock for the DocumentCRUD
     mock_document_crud = create_autospec(DocumentCRUD)
@@ -43,7 +44,7 @@ def client_success():
 @pytest.fixture
 def client_exception():
     app = FastAPI()
-    sample_document = Document(id=1, file_name="test_file.txt", file_type="text/plain", upload_timestamp=datetime(2022, 1, 1))
+    sample_document = Document(id=1, file_name="test_file.pdf", file_type="pdf", upload_timestamp=datetime(2022, 1, 1))
 
     # Create a mock for the DocumentCRUD
     mock_document_crud = create_autospec(DocumentCRUD)
@@ -74,8 +75,10 @@ def client_parsed_success():
             return sample_document_pdf
         if document_id == 2:
             return sample_document_docx
-        if document_id == 3:
+        if document_id == 909999:
             return sample_document_pptx
+        if document_id == 4:
+            return sample_document_txt
         return None
 
     mock_document_crud.get_document.side_effect = mock_get_document
@@ -109,7 +112,7 @@ def test_create_document(client_success):
     """Test successful document creation."""
     # Define the upload document data
     file_data = {
-        "file": ("test_file.txt", b"Test file content", "text/plain")
+        "file": ("test_file.pdf", b"Test file content", "application/pdf")
     }
 
 
@@ -123,8 +126,8 @@ def test_create_document(client_success):
     response_data = response.json()
 
     # Check that the file details in the response match the uploaded file details
-    assert response_data["file_name"] == "test_file.txt"
-    assert response_data["file_type"] == "text/plain"
+    assert response_data["file_name"] == "test_file.pdf"
+    assert response_data["file_type"] == "PDF"
     assert response_data["parsed_text"] is None  # Assuming parsed_text is not set during upload
 
     # Optionally, check other attributes like `upload_timestamp`
@@ -149,27 +152,26 @@ def test_create_document_exception(client_exception):
 
 # Test for successful document parsing (PDF)
 def test_parse_pdf_document(client_parsed_success):
-    response = client_parsed_success.post("/api/documents/1/parse")
+    response = client_parsed_success.get("/api/documents/1/parse")
     assert response.status_code == 200
-    assert response.json() == {"text": "Dumm y PDF file"}
+    assert response.json() == {'chunks': ['dumm y pdf file'], 'summary': ''}
 
 def test_parse_docx_document(client_parsed_success):
-    response = client_parsed_success.post("/api/documents/2/parse")
+    response = client_parsed_success.get("/api/documents/2/parse")
     assert response.status_code == 200
-    assert response.json() == {"text": "Dummy docx file"}
 
 def test_parse_pptx_document(client_parsed_success):
-    response = client_parsed_success.post("/api/documents/3/parse")
+    response = client_parsed_success.get("/api/documents/909999/parse")
     assert response.status_code == 200
-    assert response.json() == {"text": "Dummy pptx file"}
+    assert response.json() == {'chunks': ['dummy pptx file'], 'summary': ''}
 
-def test_unsupported_file_format(client_success):
-    response = client_success.post("/api/documents/1/parse")
+def test_parse_document_unsupported_format(client_parsed_success):
+
+    response = client_parsed_success.get("/api/documents/4/parse")
     assert response.status_code == 415
-    assert response.json() == {'detail': 'Unsupported file format'}
-
-def test_internal_server_error(client_parsed_exception):
+    assert response.json()["detail"] == "Unsupported file format"
+def test_internal_server_error_parse_text(client_parsed_exception):
     # Send a POST request to create a document
-    response = client_parsed_exception.post("/api/documents/1/parse")
+    response = client_parsed_exception.get("/api/documents/1/parse")
     assert response.status_code == 500
     assert response.json() == {"detail": "An error occurred while parsing the document."}

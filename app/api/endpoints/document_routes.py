@@ -8,8 +8,6 @@ from app.api.schemas.parsed_document_schema import ParsedDocument
 from app.api.schemas.document_schemas import DocumentCreate, Document
 from app.crud.document_crud import DocumentCRUD
 from app.dependencies import Dependency
-from PyPDF2 import PdfReader
-
 
 class DocumentRoutes:
     def __init__(self, dependency: Dependency, document_crud=DocumentCRUD):
@@ -37,7 +35,6 @@ class DocumentRoutes:
                 upload_timestamp = datetime.now()
                 # Define the location where the file will be saved
                 file_location = f"uploads/{file_name}"
-
                 # Ensure the directory exists
                 if not os.path.exists(os.path.dirname(file_location)):
                     os.makedirs(os.path.dirname(file_location), exist_ok=True)
@@ -83,55 +80,6 @@ class DocumentRoutes:
                     status_code=500, detail="An error occurred while uploading the file."
                 )
 
-        # @self.router.post("/api/documents/{document_id}/parse", response_model=ParsedDocument)
-        # def parse_document(document_id: int):
-        #     try:
-        #         # Retrieve the document from the database
-        #         document = self.document_crud.get_document(self, document_id=document_id)
-        #         if document is None:
-        #             raise HTTPException(status_code=404, detail="Document not found")
-        #
-        #         # Parse the document
-        #         file_location = f"uploads/{document.file_name}"
-        #         text = ""
-        #         if document.file_type == "PDF":
-        #             with open(file_location, "rb") as f:
-        #                 pdf_reader = PdfReader(f)
-        #                 text = ""
-        #                 for page in pdf_reader.pages:
-        #                     text += page.extract_text()
-        #         elif document.file_type == "DOCX":
-        #             from docx import Document as DocxDocument
-        #             docx = DocxDocument(file_location)
-        #             text = ""
-        #             for para in docx.paragraphs:
-        #                 text += para.text
-        #         elif document.file_type == "PPTX":
-        #             from pptx import Presentation
-        #             pptx = Presentation(file_location)
-        #             text = ""
-        #             for slide in pptx.slides:
-        #                 for shape in slide.shapes:
-        #                     if hasattr(shape, "text"):
-        #                         text += shape.text
-        #         else:
-        #             raise HTTPException(status_code=415, detail="Unsupported file format")
-        #         print(type(text))
-        #         summary = self.summarizer(text, max_length=150, min_length=25, do_sample=False)
-        #         print(summary)
-        #         return ParsedDocument(text=text, summary=summary[0]['summary_text'])
-        #     except Exception as e:
-        #         if isinstance(e, HTTPException):
-        #             # If it is, re-raise the same HTTPException
-        #             raise e
-        #         else:
-        #             # Otherwise, raise a new HTTPException with a generic message
-        #             print(f"Failed to parse document: {e}")  # Replace with proper logging in production
-        #             raise HTTPException(
-        #                 status_code=500,
-        #                 detail="An error occurred while parsing the document."
-        #             )
-
         def __split_with_overlap(text, tokenizer_name="bert-base-uncased", max_length=256, overlap=50):
             """
             Splits text into chunks using a tokenizer with overlap.
@@ -161,7 +109,7 @@ class DocumentRoutes:
         def parse_document(document_id: int):
             try:
                 # Step 1: Retrieve the document from the database
-                document = self.document_crud.get_document(self, document_id=document_id)
+                document = self.document_crud.get_document(document_id=document_id)
                 if document is None:
                     raise HTTPException(status_code=404, detail="Document not found")
 
@@ -178,7 +126,10 @@ class DocumentRoutes:
                     docx = DocxDocument(file_location)
                     text = "\n".join(para.text for para in docx.paragraphs)
                 elif document.file_type == "PPTX":
+                    print(os.getcwd())  # Check the current working directory
+
                     from pptx import Presentation
+                    print('################################ 1')
                     pptx = Presentation(file_location)
                     text = "\n".join(
                         shape.text for slide in pptx.slides for shape in slide.shapes if hasattr(shape, "text")
@@ -188,6 +139,7 @@ class DocumentRoutes:
 
                 chunks = __split_with_overlap(text, max_length=128, overlap=25)
                 summary = __summarize_text(text)
+                print(f"###########3")  # Replace with proper logging in production
 
                 return ParsedDocument(chunks=chunks, summary=summary)
 
