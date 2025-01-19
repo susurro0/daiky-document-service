@@ -16,53 +16,38 @@ class DocumentRoutes:
         self.document_crud = document_crud
         self.tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large-cnn")
         self.summarizer = pipeline("summarization")
-        #TODO
+
         @self.router.post("/api/upload/", response_model=Document)
         def upload_file(file: UploadFile = File(...)):
             """
-            Endpoint to upload a file and save its details in the database.
-
-            Args:
-                file (UploadFile): The file to be uploaded.
-
-            Returns:
-                Document: The document object with saved information.
+            Upload a file and save its details in the database.
             """
             try:
-                # Extract file details
                 file_name = file.filename
                 file_type = file.content_type
                 upload_timestamp = datetime.now()
-                # Define the location where the file will be saved
                 file_location = f"uploads/{file_name}"
-                # Ensure the directory exists
+
                 if not os.path.exists(os.path.dirname(file_location)):
                     os.makedirs(os.path.dirname(file_location), exist_ok=True)
                 os.chmod(os.path.dirname(file_location), 0o777)
 
-                # Check if the file exists and handle overwrite logic
                 if os.path.exists(file_location):
-                    # Log the overwrite action if needed
                     print(f"File {file_name} already exists. Overwriting...")
 
-                # Save the file to the specified location
                 with open(file_location, "wb") as f:
                     f.write(file.file.read())
 
-                # Parse the document if it's a PDF  'Create the document object for saving to the database
                 document_create = DocumentCreate(
                     file=file,
                     file_name=file_name,
                     file_type=file_type,
                     upload_timestamp=upload_timestamp,
                 )
-                print(document_create.upload_timestamp)
 
-                # Assuming we have an instance of DocumentCRUD
-                document_crud = DocumentCRUD(db=self.db)  # Use the proper db connection here
+                document_crud = DocumentCRUD(db=self.db)
                 saved_document = document_crud.create_document(document_create)
 
-                # Return the saved document as a response
                 return JSONResponse(
                     content={
                         "id": saved_document.id,
@@ -75,61 +60,48 @@ class DocumentRoutes:
                 )
 
             except Exception as e:
-                print(f"Failed to upload file: {e}")  # Replace with proper logging in production
+                print(f"Failed to upload file: {e}")
                 raise HTTPException(
                     status_code=500, detail="An error occurred while uploading the file."
                 )
 
         def __split_with_overlap(text, tokenizer_name="bert-base-uncased", max_length=256, overlap=50):
             """
-            Splits text into chunks using a tokenizer with overlap.
-
-            Args:
-                text (str): The input text to be split.
-                tokenizer_name (str): Name of the tokenizer (e.g., "bert-base-uncased").
-                max_length (int): Maximum token length for each chunk.
-                overlap (int): Number of overlapping tokens between chunks.
-
-            Returns:
-                List[str]: List of text chunks.
+            Split text into overlapping chunks using the tokenizer.
             """
-            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-            tokens = tokenizer.encode(text, add_special_tokens=False)
-
-            chunks = []
-            for i in range(0, len(tokens), max_length - overlap):
-                chunk_tokens = tokens[i:i + max_length]
-                chunk_text = tokenizer.decode(chunk_tokens, skip_special_tokens=True)
-                chunks.append(chunk_text)
-
+            tokens = self.tokenizer.encode(text, add_special_tokens=False)
+            chunks = [
+                self.tokenizer.decode(tokens[i:i + max_length], skip_special_tokens=True)
+                for i in range(0, len(tokens), max_length - overlap)
+            ]
             return chunks
 
-        #
         @self.router.get("/api/documents/{document_id}/parse", response_model=ParsedDocument)
         def parse_document(document_id: int):
+            """
+            Parse the content of a document and summarize it.
+            """
             try:
-                # Step 1: Retrieve the document from the database
                 document = self.document_crud.get_document(document_id=document_id)
                 if document is None:
                     raise HTTPException(status_code=404, detail="Document not found")
 
-                # Step 2: Extract text from the document
                 file_location = f"uploads/{document.file_name}"
                 text = ""
+
                 if document.file_type == "PDF":
+                    from pypdf import PdfReader
                     with open(file_location, "rb") as f:
-                        from PyPDF2 import PdfReader
                         pdf_reader = PdfReader(f)
                         text = "".join(page.extract_text() for page in pdf_reader.pages)
+
                 elif document.file_type == "DOCX":
                     from docx import Document as DocxDocument
                     docx = DocxDocument(file_location)
                     text = "\n".join(para.text for para in docx.paragraphs)
-                elif document.file_type == "PPTX":
-                    print(os.getcwd())  # Check the current working directory
 
+                elif document.file_type == "PPTX":
                     from pptx import Presentation
-                    print('################################ 1')
                     pptx = Presentation(file_location)
                     text = "\n".join(
                         shape.text for slide in pptx.slides for shape in slide.shapes if hasattr(shape, "text")
@@ -139,40 +111,27 @@ class DocumentRoutes:
 
                 chunks = __split_with_overlap(text, max_length=128, overlap=25)
                 summary = __summarize_text(text)
-                print(f"###########3")  # Replace with proper logging in production
 
                 return ParsedDocument(chunks=chunks, summary=summary)
 
             except Exception as e:
                 if isinstance(e, HTTPException):
                     raise e
-                else:
-                    print(f"Failed to parse document: {e}")  # Replace with proper logging in production
-                    raise HTTPException(
-                        status_code=500,
-                        detail="An error occurred while parsing the document."
-                    )
+                print(f"Failed to parse document: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail="An error occurred while parsing the document."
+                )
 
         def __summarize_text(text, max_length=512, summary_max_length=150, summary_min_length=25):
             """
-            Summarize the text if its tokenized length is within the model's maximum limit.
-
-            Args:
-                text (str): The input text to summarize.
-                max_length (int): The maximum token length allowed for the model.
-                summary_max_length (int): Maximum length of the summary.
-                summary_min_length (int): Minimum length of the summary.
-
-            Returns:
-                str or None: The summary if tokenized text is within max_length; None otherwise.
+            Summarize text using a pre-trained model.
             """
             tokens = self.tokenizer(text, return_tensors="pt", truncation=False)
-            num_tokens = len(tokens["input_ids"][0])
-
-            if num_tokens >= max_length:
+            if len(tokens["input_ids"][0]) >= max_length:
                 summary = self.summarizer(
                     text, max_length=summary_max_length, min_length=summary_min_length, do_sample=False
                 )
                 return summary[0]["summary_text"]
-            else:
-                return ''
+            return ""
+

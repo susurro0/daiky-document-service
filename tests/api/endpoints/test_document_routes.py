@@ -154,7 +154,12 @@ def test_create_document_exception(client_exception):
 def test_parse_pdf_document(client_parsed_success):
     response = client_parsed_success.get("/api/documents/1/parse")
     assert response.status_code == 200
-    assert response.json() == {'chunks': ['dumm y pdf file'], 'summary': ''}
+    assert response.json() == {'chunks': ['Dummy PDF file'], 'summary': ''}
+
+def test_parse_document_not_found(client_parsed_success):
+    response = client_parsed_success.get("/api/documents/999/parse")  # Use a non-existent document ID
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Document not found"}
 
 def test_parse_docx_document(client_parsed_success):
     response = client_parsed_success.get("/api/documents/2/parse")
@@ -163,7 +168,7 @@ def test_parse_docx_document(client_parsed_success):
 def test_parse_pptx_document(client_parsed_success):
     response = client_parsed_success.get("/api/documents/909999/parse")
     assert response.status_code == 200
-    assert response.json() == {'chunks': ['dummy pptx file'], 'summary': ''}
+    assert response.json() == {'chunks': ['Dummy pptx file\n'], 'summary': ''}
 
 def test_parse_document_unsupported_format(client_parsed_success):
 
