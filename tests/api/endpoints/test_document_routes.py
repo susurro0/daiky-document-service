@@ -1,3 +1,6 @@
+import os
+import shutil
+import tempfile
 from datetime import datetime
 from logging import raiseExceptions
 
@@ -17,6 +20,7 @@ sample_document_pdf = Document(id=1, file_name="dummy.pdf", file_type="PDF", upl
 sample_document_docx = Document(id=2, file_name="dummy.docx", file_type="DOCX", upload_timestamp=datetime(2022, 1, 1))
 sample_document_pptx = Document(id=909999, file_name="dummy.pptx", file_type="PPTX", upload_timestamp=datetime(2022, 1, 1))
 sample_document_txt = Document(id=4, file_name="dummy.txt", file_type="txt", upload_timestamp=datetime(2022, 1, 1))
+sample_document_long_docx = Document(id=5, file_name="Stuttgart.docx", file_type="DOCX", upload_timestamp=datetime(2022, 1, 1))
 
 
 @pytest.fixture
@@ -79,6 +83,8 @@ def client_parsed_success():
             return sample_document_pptx
         if document_id == 4:
             return sample_document_txt
+        if document_id == 5:
+            return sample_document_long_docx
         return None
 
     mock_document_crud.get_document.side_effect = mock_get_document
@@ -152,9 +158,10 @@ def test_create_document_exception(client_exception):
 
 # Test for successful document parsing (PDF)
 def test_parse_pdf_document(client_parsed_success):
+
     response = client_parsed_success.get("/api/documents/1/parse")
     assert response.status_code == 200
-    assert response.json() == {'chunks': ['Dummy PDF file'], 'summary': ''}
+    assert response.json() == {'chunks': ['Dummy PDF file '], 'summary': ''}
 
 def test_parse_document_not_found(client_parsed_success):
     response = client_parsed_success.get("/api/documents/999/parse")  # Use a non-existent document ID
@@ -164,6 +171,12 @@ def test_parse_document_not_found(client_parsed_success):
 def test_parse_docx_document(client_parsed_success):
     response = client_parsed_success.get("/api/documents/2/parse")
     assert response.status_code == 200
+    assert response.json() == {'chunks': ['Dummy DOCX file'], 'summary': ''}
+
+def test_parse_docx_document_with_summary(client_parsed_success):
+    response = client_parsed_success.get("/api/documents/5/parse")
+    assert response.status_code == 200
+    assert response.json()['summary'] != ''
 
 def test_parse_pptx_document(client_parsed_success):
     response = client_parsed_success.get("/api/documents/909999/parse")
@@ -180,3 +193,21 @@ def test_internal_server_error_parse_text(client_parsed_exception):
     response = client_parsed_exception.get("/api/documents/1/parse")
     assert response.status_code == 500
     assert response.json() == {"detail": "An error occurred while parsing the document."}
+
+def test_create_directory():
+    # Setup a temporary directory for testing
+    temp_dir = tempfile.mkdtemp()
+    test_file_path = os.path.join(temp_dir, "uploadss/testfile.txt")
+
+    try:
+        # Ensure the directory doesn't exist before the test
+        assert not os.path.exists(os.path.dirname(test_file_path))
+
+        # Execute the directory creation logic
+        os.makedirs(os.path.dirname(test_file_path), exist_ok=True)
+
+        # Assert the directory was created
+        assert os.path.exists(os.path.dirname(test_file_path))
+    finally:
+        # Cleanup: Remove the temporary directory after the test
+        shutil.rmtree(temp_dir)

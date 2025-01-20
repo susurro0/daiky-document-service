@@ -28,10 +28,6 @@ class DocumentRoutes:
                 upload_timestamp = datetime.now()
                 file_location = f"uploads/{file_name}"
 
-                if not os.path.exists(os.path.dirname(file_location)):
-                    os.makedirs(os.path.dirname(file_location), exist_ok=True)
-                os.chmod(os.path.dirname(file_location), 0o777)
-
                 if os.path.exists(file_location):
                     print(f"File {file_name} already exists. Overwriting...")
 
