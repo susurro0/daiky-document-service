@@ -30,7 +30,7 @@ def create_app() -> FastAPI:
 
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover
     import uvicorn
 
     app = create_app()
