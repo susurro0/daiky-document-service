@@ -13,7 +13,7 @@ class DocumentRoutes:
     def __init__(self, dependency: Dependency, document_crud=DocumentCRUD):
         self.router = APIRouter()
         self.db = dependency.get_db()
-        self.document_crud = document_crud
+        self.document_crud = DocumentCRUD(db=self.db)
         self.tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large-cnn")
         self.summarizer = pipeline("summarization")
 
@@ -41,8 +41,7 @@ class DocumentRoutes:
                     upload_timestamp=upload_timestamp,
                 )
 
-                document_crud = DocumentCRUD(db=self.db)
-                saved_document = document_crud.create_document(document_create)
+                saved_document = self.document_crud.create_document(document_create)
 
                 return JSONResponse(
                     content={
